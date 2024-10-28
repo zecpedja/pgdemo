@@ -6,11 +6,12 @@ services:
       POSTGRES_USER: puser
       POSTGRES_PASSWORD: ppassword
       POSTGRES_DB: pdb
+      PGDATA: /var/lib/postgresql/data/pgdata  # matches the 'data' path
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts/postgres:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data  # main volume
+      - ./init-scripts/postgres:/docker-entrypoint-initdb.d  # init scripts
     networks:
       - app_network
     healthcheck:
@@ -18,6 +19,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:latest
@@ -34,6 +36,7 @@ services:
       timeout: 5s
       retries: 5
     command: redis-server --appendonly yes
+    restart: unless-stopped
 
 networks:
   app_network:
