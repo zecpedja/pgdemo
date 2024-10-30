@@ -1,7 +1,9 @@
 package com.example.pgdemo.config;
 
+import com.example.pgdemo.model.Event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -10,7 +12,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -22,20 +24,25 @@ public class RedisConfig {
 
   @Bean
   public ObjectMapper redisObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.registerModule(new JavaTimeModule());
-    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    return mapper;
+    return JsonMapper.builder()
+            .addModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .build();
   }
 
   @Bean
-  public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
-    GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+  public Jackson2JsonRedisSerializer<Event> eventSerializer(ObjectMapper redisObjectMapper) {
+    Jackson2JsonRedisSerializer<Event> serializer = new Jackson2JsonRedisSerializer<>(redisObjectMapper, Event.class);
+    return serializer;
+  }
 
+  @Bean
+  public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory,
+                                        Jackson2JsonRedisSerializer<Event> eventSerializer) {
     RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
             .entryTtl(Duration.ofHours(1))
             .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-            .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
+            .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(eventSerializer));
 
     return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(config)
@@ -43,13 +50,14 @@ public class RedisConfig {
   }
 
   @Bean
-  public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
-    RedisTemplate<String, Object> template = new RedisTemplate<>();
+  public RedisTemplate<String, Event> redisTemplate(RedisConnectionFactory connectionFactory,
+                                                    Jackson2JsonRedisSerializer<Event> eventSerializer) {
+    RedisTemplate<String, Event> template = new RedisTemplate<>();
     template.setConnectionFactory(connectionFactory);
     template.setKeySerializer(new StringRedisSerializer());
-    template.setValueSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper));
+    template.setValueSerializer(eventSerializer);
     template.setHashKeySerializer(new StringRedisSerializer());
-    template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper));
+    template.setHashValueSerializer(eventSerializer);
     return template;
   }
 }

@@ -3,13 +3,12 @@ package com.example.pgdemo.service;
 import com.example.pgdemo.model.Event;
 import com.example.pgdemo.repository.EventRepository;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
+
 @Service
 @Transactional
 public class EventService {
@@ -20,7 +19,10 @@ public class EventService {
     this.eventRepository = eventRepository;
   }
 
-  @CachePut(value = CACHE_NAME, key = "#result.id")
+  @Caching(evict = {
+          @CacheEvict(value = CACHE_NAME, key = "'all'"),
+          @CacheEvict(value = CACHE_NAME, key = "#result.id")
+  })
   public Event createEvent(Event event) {
     return eventRepository.save(event);
   }
@@ -31,7 +33,10 @@ public class EventService {
             .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
   }
 
-  @CachePut(value = CACHE_NAME, key = "#id")
+  @Caching(evict = {
+          @CacheEvict(value = CACHE_NAME, key = "'all'"),
+          @CacheEvict(value = CACHE_NAME, key = "#id")
+  })
   public Event updateEvent(Long id, Event event) {
     Event existingEvent = getEvent(id);
     existingEvent.setTitle(event.getTitle());
@@ -44,13 +49,11 @@ public class EventService {
     return eventRepository.findAll();
   }
 
-  @CacheEvict(value = CACHE_NAME, key = "#id")
+  @Caching(evict = {
+          @CacheEvict(value = CACHE_NAME, key = "'all'"),
+          @CacheEvict(value = CACHE_NAME, key = "#id")
+  })
   public void deleteEvent(Long id) {
     eventRepository.deleteById(id);
-  }
-
-  @CacheEvict(value = CACHE_NAME, allEntries = true)
-  public void clearCache() {
-    // This method will clear all entries from the cache
   }
 }
