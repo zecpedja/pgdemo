@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 @Service
 @Transactional
 public class EventService {
@@ -21,26 +20,9 @@ public class EventService {
     this.eventRepository = eventRepository;
   }
 
-  @Caching(
-          put = { @CachePut(value = CACHE_NAME, key = "#result.id") },
-          evict = { @CacheEvict(value = CACHE_NAME, key = "'all'") }
-  )
+  @CachePut(value = CACHE_NAME, key = "#result.id")
   public Event createEvent(Event event) {
     return eventRepository.save(event);
-  }
-
-  @Caching(
-          put = { @CachePut(value = CACHE_NAME, key = "#id") },
-          evict = { @CacheEvict(value = CACHE_NAME, key = "'all'") }
-  )
-  public Event updateEvent(Long id, Event event) {
-    Event existingEvent = eventRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
-
-    existingEvent.setTitle(event.getTitle());
-    existingEvent.setDescription(event.getDescription());
-
-    return eventRepository.save(existingEvent);
   }
 
   @Cacheable(value = CACHE_NAME, key = "#id")
@@ -49,15 +31,20 @@ public class EventService {
             .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
   }
 
+  @CachePut(value = CACHE_NAME, key = "#id")
+  public Event updateEvent(Long id, Event event) {
+    Event existingEvent = getEvent(id);
+    existingEvent.setTitle(event.getTitle());
+    existingEvent.setDescription(event.getDescription());
+    return eventRepository.save(existingEvent);
+  }
+
   @Cacheable(value = CACHE_NAME, key = "'all'")
   public List<Event> getAllEvents() {
     return eventRepository.findAll();
   }
 
-  @Caching(evict = {
-          @CacheEvict(value = CACHE_NAME, key = "#id"),
-          @CacheEvict(value = CACHE_NAME, key = "'all'")
-  })
+  @CacheEvict(value = CACHE_NAME, key = "#id")
   public void deleteEvent(Long id) {
     eventRepository.deleteById(id);
   }

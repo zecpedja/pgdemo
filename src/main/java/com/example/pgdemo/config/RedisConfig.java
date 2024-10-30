@@ -1,6 +1,7 @@
 package com.example.pgdemo.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -20,20 +21,17 @@ import java.time.Duration;
 public class RedisConfig {
 
   @Bean
-  public ObjectMapper objectMapper() {
+  public ObjectMapper redisObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JavaTimeModule());
+    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     return mapper;
   }
 
   @Bean
-  public GenericJackson2JsonRedisSerializer genericJackson2JsonRedisSerializer(ObjectMapper objectMapper) {
-    return new GenericJackson2JsonRedisSerializer(objectMapper);
-  }
+  public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
+    GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
 
-  @Bean
-  public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory,
-                                        GenericJackson2JsonRedisSerializer serializer) {
     RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
             .entryTtl(Duration.ofHours(1))
             .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
@@ -45,16 +43,13 @@ public class RedisConfig {
   }
 
   @Bean
-  public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory,
-                                                     GenericJackson2JsonRedisSerializer serializer) {
+  public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
     RedisTemplate<String, Object> template = new RedisTemplate<>();
     template.setConnectionFactory(connectionFactory);
     template.setKeySerializer(new StringRedisSerializer());
-    template.setValueSerializer(serializer);
+    template.setValueSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper));
     template.setHashKeySerializer(new StringRedisSerializer());
-    template.setHashValueSerializer(serializer);
-    template.setEnableTransactionSupport(true);
-    template.afterPropertiesSet();
+    template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper));
     return template;
   }
 }

@@ -1,5 +1,6 @@
 package com.example.pgdemo.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,10 @@ public class Event implements Serializable {
   private Long id;
   private String title;
   private String description;
+
+  @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
   private OffsetDateTime createdAt;
+
+  @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
   private OffsetDateTime updatedAt;
 }
